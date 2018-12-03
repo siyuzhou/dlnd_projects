@@ -1,4 +1,5 @@
 import copy
+import random
 from collections import namedtuple, deque
 import numpy as np
 import torch
@@ -11,7 +12,7 @@ class OUNoise:
         """Initialize parameters and noise process."""
         self.mu = mu * np.ones(size)
 
-        np.random.seed(seed)
+        random.seed(seed)
 
         self.theta = theta
         self.sigma = sigma
@@ -53,7 +54,7 @@ class ReplayBuffer:
 
     def sample(self):
         """Randomly sample a batch of experiences from memory."""
-        experiences = np.random.choice(self.memory, size=self.batch_size, replace=False)
+        experiences = random.sample(self.memory, k=self.batch_size)
 
         states = np.vstack([e.state for e in experiences if e is not None])
         actions = np.vstack([e.action for e in experiences if e is not None])

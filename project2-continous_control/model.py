@@ -33,7 +33,7 @@ class Actor(nn.Module):
 class Critic(nn.Module):
     """Critic (Value) Model"""
 
-    def __init__(self, state_size, action_size, seed, hidden_layers=[256]):
+    def __init__(self, state_size, action_size, seed, hidden_layers=[256, 128]):
         super().__init__()
         self.seed = torch.manual_seed(seed)
         self.fc1 = nn.Linear(state_size+action_size, hidden_layers[0])
