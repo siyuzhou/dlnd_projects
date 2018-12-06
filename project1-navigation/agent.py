@@ -22,8 +22,11 @@ class Agent:
         """
         Initialize an Agent object.
         
-        :params:
-        
+        Params
+        ======
+            state_size (int): dimension of state
+            action_size (int): dimention of action
+            seed (int): random seed
         """
         self.state_size = state_size
         self.action_size = action_size
