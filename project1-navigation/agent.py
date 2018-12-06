@@ -15,6 +15,7 @@ GAMMA = 0.99            # discount factor
 TAU = 1e-3              # for soft update of target parameters
 LR = 5e-4               # learning rate 
 UPDATE_EVERY = 4        # how often to update the network
+EPS = 0.05              # how often to choose a uniformly random action
 
     
 class Agent:
@@ -40,7 +41,7 @@ class Agent:
         
         self.step_count = 0
 
-    def act(self, state, eps=0.05):
+    def act(self, state, eps=EPS):
         """Returns actions for given state as per current policy.
         
         Params
@@ -79,7 +80,6 @@ class Agent:
         Params
         ======
             experiences (Tuple[torch.Tensor]): tuple of (s, a, r, s', done) tuples 
-            gamma (float): discount factor
         """
         states, actions, rewards, next_states, dones = experiences
         # Move experiences to DEVICE
@@ -115,8 +115,7 @@ class Agent:
         Params
         ======
             local_model (PyTorch model): weights will be copied from
-            target_model (PyTorch model): weights will be copied to
-            tau (float): interpolation parameter 
+            target_model (PyTorch model): weights will be copied to 
         """
         for target_param, local_param in zip(target_model.parameters(), local_model.parameters()):
             target_param.data.copy_(TAU*local_param.data + (1.0-TAU)*target_param.data)

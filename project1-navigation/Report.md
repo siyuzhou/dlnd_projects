@@ -28,6 +28,7 @@ During a game, tuples of state, action, reward, next state and terminal status a
 |Discount factor $\gamma$| `0.99`|
 |Learning rate $\alpha$|`5e-4`|
 |Soft update rate $\tau$|`1e-3`|
+|Random exploration chance $\epsilon$|`0.05`|
 
 A size of `1e5` for the memory buffer, and a batch size of `64` for experience replay sampling are used. The target network is soft-updated every `4` steps.
 
