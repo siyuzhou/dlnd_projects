@@ -22,3 +22,5 @@ For NumPy, simply run `pip install numpy` in your python environment. Follow ins
 
 Checkout out the Jupyter notebook `Navigation.ipynb` for detailed information of the environment. Run through Section 4 to see how the agent is trained. Section demonstrate the trained agent in action!
 
+Details of model implementation are in `dqn_agent.py` and `model.py`. Code modified from course examples.
+
