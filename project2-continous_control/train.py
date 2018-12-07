@@ -1,3 +1,4 @@
+import sys
 from collections import deque
 
 import numpy as np
@@ -5,7 +6,7 @@ import torch
 from unityagents import UnityEnvironment
 from agent import DDPGAgent
 
-env = UnityEnvironment(file_name='Reacher_Linux/Reacher.x86_64')
+env = UnityEnvironment(file_name='environment/Reacher_Linux/Reacher.x86_64')
 
 # get the default brain
 brain_name = env.brain_names[0]
@@ -62,12 +63,13 @@ def train(n_episodes=2000, max_t=700):
 
         scores_deque.append(score)
         scores.append(score)
-        print('\rEpisode {}\tAverage Score: {:.2f}\tScore: {:.2f}, Max Score: {:.2f}'.format(
+        print('\rEpisode {}\tAverage Score: {:.2f}\tScore: {:.2f}\tMax Score: {:.2f}'.format(
             i_episode, np.mean(scores_deque), score, max_score), end="")
+        sys.stdout.flush()
         if i_episode % 100 == 0:
             torch.save(agents[0].actor_local.state_dict(), 'checkpoint_actor.pth')
             torch.save(agents[0].critic_local.state_dict(), 'checkpoint_critic.pth')
-            print('\rEpisode {}\tAverage Score: {:.2f}, Max Score: {:.2f}'.format(
+            print('\rEpisode {}\tAverage Score: {:.2f}\tMax Score: {:.2f}'.format(
                 i_episode, np.mean(scores_deque), max_score))
 
     return scores
