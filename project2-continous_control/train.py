@@ -1,58 +1,69 @@
+import os
 import sys
-from collections import deque
+import argparse
+from collections import deque, namedtuple
 
 import numpy as np
 import torch
 from unityagents import UnityEnvironment
 from agent import DDPGAgent
 
-env = UnityEnvironment(file_name='environment/Reacher_Linux/Reacher.x86_64')
 
-# get the default brain
-brain_name = env.brain_names[0]
-brain = env.brains[brain_name]
+def save_checkpoint(agent, total_episode, logdir):
+    torch.save(agent.actor_local.state_dict(), os.path.join(logdir, "actor_local.pth"))
+    torch.save(agent.actor_target.state_dict(), os.path.join(logdir, "actor_target.pth"))
+    torch.save(agent.critic_local.state_dict(), os.path.join(logdir, "critic_local.pth"))
+    torch.save(agent.critic_target.state_dict(), os.path.join(logdir, "critic_target.pth"))
 
-# reset the environment
-env_info = env.reset(train_mode=True)[brain_name]
-
-# number of agents
-num_agents = len(env_info.agents)
-print('Number of agents:', num_agents)
-
-# size of each action
-action_size = brain.vector_action_space_size
-print('Size of each action:', action_size)
-
-# examine the state space
-states = env_info.vector_observations
-state_size = states.shape[1]
-print('There are {} agents. Each observes a state with length: {}'.format(
-    states.shape[0], state_size))
-print('The state for the first agent looks like:', states[0])
+    torch.save(total_episode, os.path.join(logdir, "episodes.pth"))
 
 
-# Create agents
-agents = [DDPGAgent(state_size=state_size, action_size=action_size, random_seed=10)]
+def load_checkpoint(logdir):
+    Checkpoint = namedtuple("Checkpoint",
+                            ['actor_local',
+                             'actor_target',
+                             'critic_local',
+                             'critic_target',
+                             'episodes'])
+    try:
+        actor_local = torch.load(os.path.join(logdir, "actor_local.pth"))
+        actor_target = torch.load(os.path.join(logdir, "actor_target.pth"))
+        critic_local = torch.load(os.path.join(logdir, "critic_local.pth"))
+        critic_target = torch.load(os.path.join(logdir, "critic_target.pth"))
+        episodes = torch.load(os.path.join(logdir, "episodes.pth"))
+        return Checkpoint(actor_local, actor_target, critic_local, critic_target, episodes)
+    except FileNotFoundError:
+        if not os.path.exists(logdir):
+            os.mkdir(logdir)
 
 
-def train(n_episodes=2000, max_t=700):
+def train(agent, n_episodes, max_t, logdir):
+    checkpoint = load_checkpoint(logdir)
+    total_episode = 0
+    if checkpoint:
+        agent.load(checkpoint)
+        total_episode += checkpoint.episodes
+
     scores_deque = deque(maxlen=100)
     scores = []
     max_score = -np.Inf
     for i_episode in range(1, n_episodes+1):
+        total_episode += 1
+
         env_info = env.reset(train_mode=True)[brain_name]
         state = env_info.vector_observations[0]
-        agents[0].reset()
+        agent.reset()
         score = 0
-        for t in range(max_t):
-            action = agents[0].act(state)
+
+        for _ in range(max_t):
+            action = agent.act(state)
 
             env_info = env.step(action)[brain_name]
             next_state = env_info.vector_observations[0]
             reward = env_info.rewards[0]
             done = env_info.local_done[0]
 
-            agents[0].step(state, action, reward, next_state, done)
+            agent.step(state, action, reward, next_state, done)
             state = next_state
             score += reward
             if done:
@@ -64,19 +75,54 @@ def train(n_episodes=2000, max_t=700):
         scores_deque.append(score)
         scores.append(score)
         print('\rEpisode {}\tAverage Score: {:.2f}\tScore: {:.2f}\tMax Score: {:.2f}'.format(
-            i_episode, np.mean(scores_deque), score, max_score), end="")
+            total_episode, np.mean(scores_deque), score, max_score), end="")
         sys.stdout.flush()
+
         if i_episode % 100 == 0:
-            torch.save(agents[0].actor_local.state_dict(), 'checkpoint_actor.pth')
-            torch.save(agents[0].critic_local.state_dict(), 'checkpoint_critic.pth')
+            save_checkpoint(agent, total_episode, logdir)
+
             print('\rEpisode {}\tAverage Score: {:.2f}\tMax Score: {:.2f}'.format(
-                i_episode, np.mean(scores_deque), max_score))
+                total_episode, np.mean(scores_deque), max_score))
 
     return scores
 
 
-scores = train()
+if __name__ == "__main__":
+    # Parse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--episodes", type=int, default=1000)
+    parser.add_argument("--max-t", type=int, default=700)
+    parser.add_argument("--logdir", type=str, default="checkpoint")
+    ARGS = parser.parse_args()
 
-np.save("score.npy", scores)
+    # Create environment.
+    env = UnityEnvironment(file_name='environment/Reacher_Linux/Reacher.x86_64')
 
-env.close()
+    # get the default brain
+    brain_name = env.brain_names[0]
+    brain = env.brains[brain_name]
+
+    # reset the environment
+    env_info = env.reset(train_mode=True)[brain_name]
+
+    # number of agents
+    num_agents = len(env_info.agents)
+    print('Number of agents:', num_agents)
+
+    # size of each action
+    action_size = brain.vector_action_space_size
+    print('Size of each action:', action_size)
+
+    # examine the state space
+    states = env_info.vector_observations
+    state_size = states.shape[1]
+    print('There are {} agents. Each observes a state with length: {}'.format(
+        states.shape[0], state_size))
+    print('The state for the first agent looks like:', states[0])
+
+    # Create agent
+    agent = DDPGAgent(state_size=state_size, action_size=action_size, random_seed=10)
+
+    scores = train(agent, ARGS.episodes, ARGS.max_t, ARGS.logdir)
+
+    np.save("scores.npy", scores)
