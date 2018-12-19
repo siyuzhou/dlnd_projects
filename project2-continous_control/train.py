@@ -51,26 +51,25 @@ def train(agent, n_episodes, max_t, logdir):
         total_episode += 1
 
         env_info = env.reset(train_mode=True)[brain_name]
-        state = env_info.vector_observations[0]
+        state = env_info.vector_observations
         agent.reset()
         score = 0
 
-        for _ in range(max_t):
+        for t in range(max_t):
             action = agent.act(state)
 
             env_info = env.step(action)[brain_name]
-            next_state = env_info.vector_observations[0]
-            reward = env_info.rewards[0]
-            done = env_info.local_done[0]
+            next_state = env_info.vector_observations
+            reward = env_info.rewards
+            done = env_info.local_done
 
             agent.step(state, action, reward, next_state, done)
             state = next_state
-            score += reward
-            if done:
+            score += np.mean(reward)
+            if all(done):
                 break
 
-        if score > max_score:
-            max_score = score
+        max_score = max(score, max_score)
 
         scores_deque.append(score)
         scores.append(score)
@@ -91,7 +90,7 @@ if __name__ == "__main__":
     # Parse
     parser = argparse.ArgumentParser()
     parser.add_argument("--episodes", type=int, default=1000)
-    parser.add_argument("--max-t", type=int, default=700)
+    parser.add_argument("--max-t", type=int, default=1000)
     parser.add_argument("--logdir", type=str, default="checkpoint")
     ARGS = parser.parse_args()
 

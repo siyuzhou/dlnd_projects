@@ -13,7 +13,7 @@ torch.manual_seed(0)  # set random seed
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 BUFFER_SIZE = int(1e6)  # replay buffer size
-BATCH_SIZE = 128        # minibatch size
+BATCH_SIZE = 1024       # minibatch size
 GAMMA = 0.99            # discount factor
 TAU = 1e-2              # for soft update of target parameters
 LR_ACTOR = 1e-4         # learning rate of the actor
@@ -53,7 +53,8 @@ class DDPGAgent():
 
     def step(self, state, action, reward, next_state, done):
         # Save experience and reward in replay buffer
-        self.memory.add(state, action, reward, next_state, done)
+        for s, a, r, ns, d in zip(state, action, reward, next_state, done):
+            self.memory.add(s, a, r, ns, d)
 
         # Learn after aquiring enough experiences in memory
         if len(self.memory) > BATCH_SIZE:
@@ -71,6 +72,7 @@ class DDPGAgent():
 
         actions_next = self.actor_target(next_states)
         Q_targets_next = self.critic_target(next_states, actions_next)
+
         Q_targets = rewards + (gamma * Q_targets_next * (1 - dones))
 
         # Update the critic

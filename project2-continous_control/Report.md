@@ -2,7 +2,23 @@
 
 ## Learning Algorithm
 
-The agent is implemented with a basic Deterministic Policy Gradient (DPG) algorithm.
+The agent is implemented with a basic Deterministic Policy Gradient (DPG) algorithm. 
+
+The model consists of an actor and a critic. The actor's function outputs a deterministic action, instead of a distribution of actions, and the critic's function approximates the $Q$ value of state-action pairs, $Q(s, a)$. Parameters in the critic are updated with TD-learning, the loss function being the mean squared error between expected $Q$ value and target $Q$ value:
+
+$$
+loss_{critic} = |r+\gamma Q(s_{t+1}, a_{t+1}) - Q(s_t ,a_t)|^2.
+$$
+
+Parameters in the actor are optimized for maximum total expected return $J$. Following the derivation of [*Lillicrap, et al. 2016*](https://arxiv.org/abs/1509.02971), 
+
+$$
+\nabla_\theta J \propto \nabla_\theta Q(s, \mu(s|\theta)),
+$$
+
+where $\mu$ is the deterministic policy parameterized by $\theta$. Thus, the loss function for the actor can be reduced to $-Q(s, \mu(s))$ without losing quality.
+
+To have better stability, both the actor and the critic employ a target network and a local network. 
 
 ## Network Structure and Hyper Parameters
 
@@ -25,8 +41,10 @@ The agent is implemented with a basic Deterministic Policy Gradient (DPG) algori
 |Critic learning rate $\alpha_c$|`1e-4`|
 |Soft update rate $\tau$|`1e-2`|
 |Weight decay $\lambda$|`0.0001`|
+|Replay buffer size|`1e6`|
+|Batch size|`1024`|
+|Max episode length|`1000`|
 
-A size of `1e6` for the memory buffer, and a batch size of `128` for experience replay sampling are used. The target network is soft-updated every `4` steps.
 
 ## Score Visualization
 
@@ -34,8 +52,8 @@ Average score vs. Episode
 
 ![Average score vs. episode](pictures/scores.png)
 
-After 1000 episodes, the average score plateued about 23. The max score has been under 28. The model was not able to achieve a score of 30+. 
+After 800 episodes, the average score reached above 30. The max score is 30.54. Increasing the max epoisode length to 1000 seems to have fixed the previous problem that the average score plateued at a lower value. 
 
 ## Future Improvements
 
-I suspect underfitting by the actor network. Though after increasing the depth of actor network, the agent failed to learn steadily. The underperformance could also attribute to the model's converging to local optimum. I could use n-step bootstrapping or generalized advantage estimation and prioritized experience replay to improve exploration.
+N-step bootstrapping or generalized advantage estimation and prioritized experience replay could be used to improve stability.
