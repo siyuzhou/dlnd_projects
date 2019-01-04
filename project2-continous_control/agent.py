@@ -39,7 +39,7 @@ class DDPGAgent():
 
         self.noise = OUNoise(action_size, random_seed)
 
-        self.memory = ReplayBuffer(action_size, BUFFER_SIZE, BATCH_SIZE, random_seed)
+        self.memory = ReplayBuffer(BUFFER_SIZE, BATCH_SIZE, random_seed)
 
     def act(self, state, add_noise=True):
         state = torch.tensor(state, dtype=torch.float, device=DEVICE)
