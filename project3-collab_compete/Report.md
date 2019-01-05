@@ -32,7 +32,11 @@ $$
 \p \propto (|\delta|+\epsilon)^\alpha
 $$
 
-where $\alpha$ is a constant exponent, and $\delta$ is the TD error. $\epsilon$ is a small constant that prevents a "perfect" experience with $0$ from never being selected.
+where $\alpha$ is a constant exponent, and $\delta$ is the TD error. $\epsilon$ is a small constant that prevents a "perfect" experience with $0$ from never being selected. To correct the bias introduced by non-uniform sampling, a weight term is applied to the error during parameter update, defined as:
+
+$$
+
+$$
 
 ## Network Structure and Hyper Parameters
 
