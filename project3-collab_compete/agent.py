@@ -5,20 +5,20 @@ import torch.optim as optim
 import numpy as np
 
 from model import Actor, Critic
-from utils import ReplayBuffer, OUNoise
+from utils import PrioritizedMemory, OUNoise
 
 
 torch.manual_seed(0)  # set random seed
 
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-BUFFER_SIZE = int(1e6)  # replay buffer size
+BUFFER_SIZE = int(1e5)  # replay buffer size
 BATCH_SIZE = 1024       # minibatch size
 GAMMA = 0.99            # discount factor
 TAU = 1e-2              # for soft update of target parameters
 LR_ACTOR = 1e-4         # learning rate of the actor
 LR_CRITIC = 1e-4        # learning rate of the critic
-WEIGHT_DECAY = 0.0001   # L2 weight decay
+WEIGHT_DECAY = 0.0000   # L2 weight decay
 
 
 class DDPGAgent():
@@ -39,7 +39,7 @@ class DDPGAgent():
 
         self.noise = OUNoise(action_size, random_seed)
 
-        self.memory = ReplayBuffer(action_size, BUFFER_SIZE, BATCH_SIZE, random_seed)
+        self.memory = PrioritizedMemory(BUFFER_SIZE, random_seed)
 
     def act(self, state, add_noise=True):
         state = torch.tensor(state, dtype=torch.float, device=DEVICE)
@@ -53,31 +53,63 @@ class DDPGAgent():
 
     def step(self, state, action, reward, next_state, done):
         # Save experience and reward in replay buffer
-        for s, a, r, ns, d in zip(state, action, reward, next_state, done):
-            self.memory.add(s, a, r, ns, d)
+        self.actor_target.eval()
+        self.critic_target.eval()
+        self.critic_local.eval()
+
+        state_tensor = torch.tensor(state, dtype=torch.float, device=DEVICE)
+        next_state_tensor = torch.tensor(next_state, dtype=torch.float, device=DEVICE)
+        action_tensor = torch.tensor(action, dtype=torch.float, device=DEVICE)
+        done_array = np.vstack(done).astype(np.uint8)
+        reward = np.vstack(reward)
+
+        with torch.no_grad():
+            action_next = self.actor_target(next_state_tensor)
+            Q_target_next = self.critic_target(next_state_tensor, action_next).cpu().data.numpy()
+            Q_target = reward + (GAMMA * Q_target_next * (1 - done_array))
+
+            Q_expected = self.critic_local(state_tensor, action_tensor).cpu().data.numpy()
+
+            error = np.abs((Q_expected - Q_target)).squeeze()
+
+        self.actor_target.train()
+        self.critic_target.train()
+        self.critic_local.train()
+
+        for e, s, a, r, ns, d in zip(error, state, action, reward, next_state, done):
+            self.memory.add(e, (s, a, r, ns, d))
 
         # Learn after aquiring enough experiences in memory
         if len(self.memory) > BATCH_SIZE:
-            experiences = self.memory.sample()
-            self.learn(experiences, GAMMA)
+            batch = self.memory.sample(BATCH_SIZE)
+            self.learn(batch)
 
-    def learn(self, experiences, gamma):
-        states, actions, rewards, next_states, dones = experiences
+    def learn(self, batch):
+        experiences, idxs, weights = batch
+
+        weights = torch.tensor(weights, dtype=torch.float, device=DEVICE).unsqueeze(1)
+
+        states, actions, rewards, next_states, dones = tuple(zip(*experiences))
 
         states = torch.tensor(states, dtype=torch.float, device=DEVICE)
         actions = torch.tensor(actions, dtype=torch.float, device=DEVICE)
         rewards = torch.tensor(rewards, dtype=torch.float, device=DEVICE)
         next_states = torch.tensor(next_states, dtype=torch.float, device=DEVICE)
-        dones = torch.tensor(dones, dtype=torch.float, device=DEVICE)
+        dones = torch.tensor(np.vstack(dones).astype(np.uint8), dtype=torch.float, device=DEVICE)
 
         actions_next = self.actor_target(next_states)
         Q_targets_next = self.critic_target(next_states, actions_next)
 
-        Q_targets = rewards + (gamma * Q_targets_next * (1 - dones))
+        Q_targets = rewards + (GAMMA * Q_targets_next * (1 - dones))
 
         # Update the critic
         Q_expected = self.critic_local(states, actions)
-        critic_loss = F.mse_loss(Q_expected, Q_targets)
+        critic_loss = torch.mean((Q_expected - Q_targets) ** 2 * weights)  # Weighted MSE loss.
+
+        errors = torch.abs(Q_expected - Q_targets).cpu().data.numpy()
+
+        for i, idx in enumerate(idxs):
+            self.memory.update(idx, errors[i])
 
         self.critic_optimizer.zero_grad()
         critic_loss.backward()
@@ -85,7 +117,8 @@ class DDPGAgent():
 
         # Update the actor
         actions_pred = self.actor_local(states)
-        actor_loss = -self.critic_local(states, actions_pred).mean()
+        actor_loss = -self.critic_local(states, actions_pred) * weights
+        actor_loss = actor_loss.mean()
 
         self.actor_optimizer.zero_grad()
         actor_loss.backward()

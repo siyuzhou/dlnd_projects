@@ -90,7 +90,7 @@ if __name__ == "__main__":
     # Parse
     parser = argparse.ArgumentParser()
     parser.add_argument("--episodes", type=int, default=1000)
-    parser.add_argument("--max-t", type=int, default=500)
+    parser.add_argument("--max-t", type=int, default=1000)
     parser.add_argument("--logdir", type=str, default="checkpoint")
     ARGS = parser.parse_args()
 

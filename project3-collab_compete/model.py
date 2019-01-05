@@ -9,7 +9,7 @@ torch.manual_seed(0)  # set random seed
 class Actor(nn.Module):
     """Actor (Policy) Model."""
 
-    def __init__(self, state_size, action_size, seed, hidden_layers=[256]):
+    def __init__(self, state_size, action_size, seed, hidden_layers=[128]):
         super().__init__()
         self.seed = torch.manual_seed(seed)
 
@@ -28,7 +28,7 @@ class Actor(nn.Module):
 class Critic(nn.Module):
     """Critic (Value) Model"""
 
-    def __init__(self, state_size, action_size, seed, state_layers=[256], action_layers=[128, 64]):
+    def __init__(self, state_size, action_size, seed, state_layers=[128], action_layers=[128]):
         super().__init__()
         self.seed = torch.manual_seed(seed)
         self.state_layers = nn.ModuleList([
