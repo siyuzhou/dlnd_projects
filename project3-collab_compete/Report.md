@@ -29,28 +29,32 @@ The agent stores the experience in a memory buffer whenever it encounters a new 
 The probability for an experience to be sampled, subject to normalization, is designed to be
 
 $$
-\p \propto (|\delta|+\epsilon)^\alpha
+p \propto (|\delta|+\epsilon)^\alpha
 $$
 
 where $\alpha$ is a constant exponent, and $\delta$ is the TD error. $\epsilon$ is a small constant that prevents a "perfect" experience with $0$ from never being selected. To correct the bias introduced by non-uniform sampling, a weight term is applied to the error during parameter update, defined as:
 
 $$
-
+w = \left( N p\right)^{-\beta}
 $$
+
+Here $N$ is the total number of experiences, and $\beta$ is a positive number. For stability, $w$ is always normalized by their max value across all experiences. The uniformity is restored when $\beta=1$, as the $p$ term is cancelled. Thus we would like $\beta=1$ when the training eventually converges. $\beta$ is set to linearly change toward $1$ in this task. For more on Prioritiezed Experience Replay, see the original paper [*Schaul et al. 2015*](https://arxiv.org/abs/1511.05952) .
 
 ## Network Structure and Hyper Parameters
 
 #### Actor network
 
-- 1 hidden layer of size `256`
+- 1 hidden layer of size `128`
 
 #### Critic network
 
-- 1 fully connected layer of size `256` for state encoding
+- 1 fully connected layer of size `128` for state encoding
 - encoded state and action concatenation
-- 2 fully connected layers of size `[256, 128]` respectively
+- 1 fully connected layers of size `128`
 
 #### Hyper parameters
+
+##### DDPG Agent
 
 |Hyper Parameters|Value|
 |---|----|
@@ -58,20 +62,36 @@ $$
 |Actor learning rate $\alpha_a$|`1e-4`|
 |Critic learning rate $\alpha_c$|`1e-4`|
 |Soft update rate $\tau$|`1e-2`|
-|Weight decay $\lambda$|`0.0001`|
-|Replay buffer size|`1e6`|
+|Weight decay $\lambda$|`0`|
+|Replay buffer size|`1e5`|
 |Batch size|`1024`|
 |Max episode length|`1000`|
+
+##### Prioritized Memory
+
+|Hyper Parameters|Value|
+|---|---|
+|$\alpha$|`0.6`|
+|$\beta$|`0.4`|
+|$\beta$ increment|`0.0001`|
 
 
 ## Score Visualization
 
-Average score vs. Episode
+Before applying PER, it took much longer to find positive feedbacks. 
 
-![Average score vs. episode](pictures/scores.png)
+**Average score vs. Episode (without PER)**
 
-After 800 episodes, the average score reached above 30. The max score is 30.54. Increasing the max epoisode length to 1000 seems to have fixed the previous problem that the average score plateued at a lower value. 
+![Average score vs.episode](pictures/scores10000_no_per.png)
+
+**Average score vs. Episode (with PER)**
+
+![Average score vs. episode](pictures/scores5000.png)
+
+It can be seen that the average score over 100 steps has reached above 0.5 only after 9000 without PER, but at about 3300 earlest with PER. An early-stopping switch is added in the code to save the best checkpoints in terms of average score.
+
+Note that instead of using the higher score of the two agents as performance metric of the game, I used the average, which is less or equal to the higher score. This implies that whenever the environment is considered "solved" in this alternative metric, it is solved by the original standard as well.
 
 ## Future Improvements
 
-N-step bootstrapping or generalized advantage estimation and prioritized experience replay could be used to improve stability.
+N-step bootstrapping or generalized advantage estimation and prioritized experience replay could be used to improve stability. 

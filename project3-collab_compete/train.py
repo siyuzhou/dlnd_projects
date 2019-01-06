@@ -47,6 +47,7 @@ def train(agent, n_episodes, max_t, logdir):
     scores_deque = deque(maxlen=100)
     scores = []
     max_score = -np.Inf
+    best_avg = 0
     for i_episode in range(1, n_episodes+1):
         total_episode += 1
 
@@ -80,8 +81,22 @@ def train(agent, n_episodes, max_t, logdir):
         if i_episode % 100 == 0:
             save_checkpoint(agent, total_episode, logdir)
 
+            np.save(os.path.join(logdir, 'scores.npy'), scores)
+
+            avg_score = np.mean(scores_deque)
             print('\rEpisode {}\tAverage Score: {:.2f}\tMax Score: {:.2f}'.format(
-                total_episode, np.mean(scores_deque), max_score))
+                total_episode, avg_score, max_score), end="")
+
+            if avg_score > best_avg:
+                best_avg = avg_score
+                best_logdir = os.path.join(logdir, 'best')
+                if not os.path.exists(best_logdir):
+                    os.mkdir(best_logdir)
+                save_checkpoint(agent, total_episode, best_logdir)
+
+                print(' Best model saved!', end="")
+
+            print(" ")
 
     return scores
 
@@ -118,5 +133,4 @@ if __name__ == "__main__":
     agent = DDPGAgent(state_size=state_size, action_size=action_size, random_seed=10)
 
     scores = train(agent, ARGS.episodes, ARGS.max_t, ARGS.logdir)
-
-    np.save("scores.npy", scores)
+    np.save(os.path.join(ARGS.logdir, 'scores.npy'), scores)

@@ -6,6 +6,8 @@ The environment contains two rackets to be controlled by two agents that bounce 
 
 The observation space consists of 8 variables corresponding to the position and velocity of the ball and racket. Each agent receives its own, local observation.  As the rackets move in a vertical 2D plane, two continuous actions are available, corresponding to movement toward (or away from) the net, and jumping. 
 
+The environment is considered solved when using the higher score of the two agents as the game score, an average of 0.5 is achieved over 100 consecutive steps.
+
 Download the environment from one of the links below and place it in the project folder.
     - Linux: [click here](https://s3-us-west-1.amazonaws.com/udacity-drlnd/P3/Tennis/Tennis_Linux.zip)
     - Mac OSX: [click here](https://s3-us-west-1.amazonaws.com/udacity-drlnd/P3/Tennis/Tennis.app.zip)
